@@ -34,10 +34,10 @@ export const getAndroidBridge = (): AndroidBridgeInterface | undefined => {
     if (isAndroid) {
         // If we're on Android, we MUST NOT use the mock. Return a dummy that alerts so the user knows the bridge is broken.
         return {
-           setStorageDirectory: () => alert("Native Bridge 'Android' not found! Please check your WebView addJavascriptInterface implementation and ensure Proguard/R8 is not stripping the interface."),
-           getAvailableModels: () => { alert("Native Bridge missing: getAvailableModels"); return "[]"; },
-           downloadModel: () => alert("Native Bridge missing: downloadModel"),
-           deleteModel: () => { alert("Native Bridge missing: deleteModel"); return false; },
+           setStorageDirectory: () => console.error("Native Bridge 'Android' not found!"),
+           getAvailableModels: () => { console.error("Native Bridge missing: getAvailableModels"); return "[]"; },
+           downloadModel: () => console.error("Native Bridge missing: downloadModel"),
+           deleteModel: () => { console.error("Native Bridge missing: deleteModel"); return false; },
            processOfflineInference: () => "ERROR: Native Bridge 'Android' not found. Ensure MainActivity.java calls webView.addJavascriptInterface(offlineAIBridge, \"Android\") properly.",
            extractTextNatively: () => "ERROR: Native Bridge missing"
         };
