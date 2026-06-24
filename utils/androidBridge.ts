@@ -22,15 +22,44 @@ declare global {
 }
 
 export const getAndroidBridge = (): AndroidBridgeInterface | undefined => {
-  if (typeof window !== 'undefined' && window.Android) {
-    return window.Android;
+  if (typeof window !== 'undefined') {
+    // Direct access
+    const androidBridge = (window as any).Android;
+    if (androidBridge) {
+      return androidBridge;
+    }
+
+    // Check if we are inside an Android WebView
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+        // If we're on Android, we MUST NOT use the mock. Return a dummy that alerts so the user knows the bridge is broken.
+        return {
+           setStorageDirectory: () => alert("Native Bridge 'Android' not found! Please check your WebView addJavascriptInterface implementation and ensure Proguard/R8 is not stripping the interface."),
+           getAvailableModels: () => { alert("Native Bridge missing: getAvailableModels"); return "[]"; },
+           downloadModel: () => alert("Native Bridge missing: downloadModel"),
+           deleteModel: () => { alert("Native Bridge missing: deleteModel"); return false; },
+           processOfflineInference: () => "ERROR: Native Bridge 'Android' not found. Ensure MainActivity.java calls webView.addJavascriptInterface(offlineAIBridge, \"Android\") properly.",
+           extractTextNatively: () => "ERROR: Native Bridge missing"
+        };
+    }
   }
   
-  // Return a mock bridge for development/testing in the browser
+  // Return a mock bridge for development/testing in the desktop browser
   if (typeof window !== 'undefined') {
     return {
-      setStorageDirectory: () => {
-        alert("Mock: Storage directory selection opened. (Android Native Only)");
+      setStorageDirectory: async () => {
+        if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
+            try {
+                const dirHandle = await (window as any).showDirectoryPicker();
+                if (window.onStorageDirectorySelected) {
+                    window.onStorageDirectorySelected(dirHandle.name);
+                }
+            } catch (e) {
+                console.log("Directory selection cancelled", e);
+            }
+        } else {
+            alert("Storage directory selection is only available in the native Android app or browsers that support the File System Access API (like Chrome Desktop).");
+        }
       },
       getAvailableModels: () => {
         const mockModels = localStorage.getItem('mock_local_models');
@@ -69,7 +98,7 @@ export const getAndroidBridge = (): AndroidBridgeInterface | undefined => {
         return true;
       },
       processOfflineInference: (prompt: string, modelFilename: string) => {
-        return "This is a mock offline response since you are running in a web browser without the native Android app.";
+        return `[Browser Preview] I received your prompt: "${prompt}".\n\nNote: You are currently running the web version (dist). The real .gguf files cannot be executed directly by a web browser due to security sandbox limits. To use real native offline AI, you must build the provided 'android' folder using Android Studio into an APK.`;
       },
       extractTextNatively: (localFileUri: string) => {
         return "Mock extracted text from PDF/Image.";
